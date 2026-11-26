@@ -1,0 +1,53 @@
+decision_engine/
+|-- .github/
+|   |-- ISSUE_TEMPLATE/
+|   |   `-- user_story.md
+|   |-- workflows/
+|   |   `-- ci.yml
+|   `-- pull_request_template.md
+|-- app/
+|   |-- api/
+|   |   |-- __init__.py
+|   |   |-- decisions.py
+|   |   |-- deps.py
+|   |   `-- referrals.py
+|   |-- clientpack/
+|   |   |-- __init__.py
+|   |   `-- loader.py
+|   |-- domain/
+|   |   |-- __init__.py
+|   |   `-- models.py
+|   |-- events/
+|   |   |-- __init__.py
+|   |   |-- consumer.py
+|   |   `-- publisher.py
+|   |-- repository/
+|   |   |-- __init__.py
+|   |   `-- decision_repository.py
+|   |-- services/
+|   |   |-- __init__.py
+|   |   |-- decision_service.py
+|   |   |-- explainer.py
+|   |   |-- model_client.py
+|   |   `-- rules_engine.py
+|   |-- __init__.py
+|   |-- config.py
+|   `-- main.py
+|-- client_packs/
+|   `-- demo/
+|       `-- decision.yaml
+|-- tests/
+|   |-- __init__.py
+|   |-- conftest.py
+|   |-- test_api.py
+|   |-- test_decision_logic.py
+|   |-- test_explainer.py
+|   `-- test_platform.py
+|-- .env
+|-- .gitignore
+|-- docker-compose.yml
+|-- Dockerfile
+|-- pyproject.toml
+|-- README.md
+|-- requirements-dev.txt
+`-- requirements.txt

@@ -1,0 +1,751 @@
+# DEMO PACK: every limit below is a placeholder, NOT real lender policy.
+# A limit written as {product: value} changes with the product of the application.
+
+pack_version: "policy-2.0.0"
+rule_set_version: "policy-rules-2.0.0"
+
+
+# The ONLY three outcomes
+outcomes:
+  APPROVE: "Application satisfies the decision requirements."
+  REFER: "Requires review by a credit officer."
+  DECLINE: "Breaks a hard policy or decline condition."
+
+# Set of Product
+products:
+  - vehicle_loan
+  - vehicle_leasing
+  - gold_loan
+  - personal_loan
+  - sme_loan
+
+on_rule_failure:
+  knock_out_true:  DECLINE
+  knock_out_false: REFER
+  data_missing: REFER                      # a rule that cannot be checked because data is missing (never APPROVE, never DECLINE)
+  data_missing_reason_code: DATA_MISSING
+
+# Plain-English text for every reason code (shown to officers; customer wording comes later in DEC-05)
+reason_texts:
+  REG_VEHICLE_LTV_BREACH: "The loan is too large compared with the vehicle's value, above the regulatory limit."
+  REG_GOLD_LTV_BREACH: "The loan is too large compared with the gold's value, above the regulatory limit."
+  REG_SINGLE_BORROWER_BREACH: "The total exposure to this borrower is above the single-borrower limit."
+  REG_NPL_REFINANCE_RESTRICTION: "The loan would refinance an existing non-performing loan, which is not allowed."
+  REG_LEGAL_RESTRICTION: "A legal or sanctions restriction applies to this applicant."
+  AGE_POLICY_BREACH: "The applicant's age does not meet policy, at application or at the end of the loan."
+  RESIDENCY_NOT_PERMITTED: "The applicant's residency or citizenship is not permitted for this product."
+  EMPLOYMENT_TYPE_NOT_PERMITTED: "The applicant's employment type is not permitted for this product."
+  EMPLOYMENT_VINTAGE_TOO_SHORT: "The applicant has not been employed or in business long enough."
+  INCOME_BELOW_MINIMUM: "The applicant's income is below the minimum for this product."
+  GUARANTOR_NOT_ELIGIBLE: "The guarantor does not meet the income or credit requirements."
+  KYC_IDENTITY_FAILURE: "The applicant's identity could not be verified."
+  AFFORDABILITY_BREACH: "Monthly commitments are too high compared with income."
+  NDI_BELOW_MINIMUM: "The income left after essential expenses and debts is below the minimum."
+  RESIDUAL_INCOME_BELOW_MINIMUM: "The income left after the proposed instalment is below the minimum."
+  INCOME_NOT_VERIFIED: "The applicant's income could not be verified with the required documents."
+  INCOME_UNSTABLE: "The applicant's income has not been continuous for long enough."
+  CRIB_REPORT_UNAVAILABLE: "The CRIB credit report could not be obtained."
+  CRIB_ADVERSE_HISTORY: "The CRIB report shows an adverse repayment history."
+  EXPOSURE_ABOVE_LIMIT: "The applicant's total existing and new borrowing is above the allowed limit."
+  EXISTING_NPL: "The applicant has an existing non-performing loan."
+  GUARANTOR_CRIB_UNACCEPTABLE: "The guarantor's CRIB status is not acceptable."
+  LOAN_AMOUNT_BELOW_MINIMUM: "The requested amount is below the minimum for this product."
+  LOAN_AMOUNT_ABOVE_MAXIMUM: "The requested amount is above the maximum for this product."
+  TENURE_BELOW_MINIMUM: "The requested tenure is shorter than the minimum for this product."
+  TENURE_ABOVE_MAXIMUM: "The requested tenure is longer than the maximum for this product."
+  REPAYMENT_FREQUENCY_NOT_PERMITTED: "The requested repayment frequency is not permitted."
+  PURPOSE_NOT_PERMITTED: "The loan purpose is not permitted for this product."
+  LTV_ABOVE_LIMIT: "The loan is too large compared with the collateral's value, above the lender's limit."
+  COLLATERAL_OWNERSHIP_INVALID: "The collateral is not owned by the borrower or an approved third party."
+  VALUATION_NOT_VALID: "The collateral valuation is too old or was not done by an approved valuer."
+  INSURANCE_NOT_VALID: "The required insurance is missing, not comprehensive, or has expired."
+  SECURITY_NOT_PERFECTED: "The security over the collateral has not been registered."
+  RISK_GRADE_BELOW_CUTOFF: "The applicant's risk grade is below the lender's cut-off."
+  PD_ABOVE_LIMIT: "The estimated probability of default is above the limit for this product."
+  EXPECTED_LOSS_ABOVE_LIMIT: "The expected loss on this loan is above the limit for this product."
+  RISK_GRADE_NOT_PRICED: "The applicant's risk grade cannot be priced."
+  AUTHORITY_LIMIT_EXCEEDED: "The amount or risk grade is above what the automatic decision may approve."
+  KYC_DOCUMENTS_MISSING: "Required identity or address documents are missing."
+  INCOME_DOCUMENTS_MISSING: "Required income documents are missing."
+  CRIB_CONSENT_MISSING: "The applicant has not given consent for the CRIB check."
+  COLLATERAL_DOCUMENTS_MISSING: "Required collateral documents are missing."
+  SANCTIONS_MATCH: "The applicant matched a sanctions or watch list."
+  FRAUD_DOCUMENTATION: "A verified fraud indicator was found in the documents."
+  DATA_MISSING: "Required information is missing, so an officer must review the application."
+  SCORING_UNAVAILABLE: "The risk score could not be calculated, so an officer must review the application."
+
+# CBSL Policy with dates (unchanged)
+regulatory_parameters:
+  vehicle_ltv_cap:
+    source: "CBSL vehicle-LTV directions"
+    applies_to: [licensed_banks, licensed_finance_companies, registered_finance_leasing_establishments]
+    value_basis: market_value
+    classification_source: "Department of Motor Traffic vehicle classes"
+    versions:
+      - effective_from: "2025-07-18"
+        direction: "CBSL Act Directions No. 02 of 2025"
+        age_group: unregistered_or_under_1_year
+        caps_pct: {commercial_vehicle: 80, motor_car_suv_van: 60, three_wheeler: 50, other_vehicle: 70}
+      - effective_from: "2025-11-08"
+        direction: "CBSL Act Directions No. 03 of 2025"
+        age_group: unregistered_or_under_1_year
+        caps_pct: {commercial_vehicle: 70, motor_car_suv_van: 50, three_wheeler: 50, other_vehicle: 50}
+        transitional: "LCs opened 2025-07-18 to 2025-11-08 keep the previous caps"
+      - effective_from: "2026-05-25"
+        direction: "CBSL Act Directions No. 01 of 2026"
+        age_group: unregistered_or_under_1_year
+        caps_pct: {commercial_vehicle: 60, motor_car_suv_van: 40, three_wheeler: 40, other_vehicle: 40}
+        registered_over_1_year_cap_pct: 60
+        transitional: "LCs opened 2025-11-08 to 2026-05-25 keep the previous caps"
+
+  gold_ltv_cap:
+    source: "CBSL gold-collateral LTV direction"
+    applies_to: [licensed_banks, licensed_finance_companies]
+    applies_on_renewal: true
+    versions:
+      - effective_from: "2026-05-25"
+        direction: "CBSL Act Directions No. 02 of 2026"
+        cap_pct: 70
+
+  single_borrower_exposure:
+    limit_pct_of_capital_funds: 1500
+    capital_funds_cents: 1000000000000        # DEMO value (cents)
+
+
+# DERIVED FIELDS : CALCUTAED VALUE FROM ROW FEILD.
+derived_fields:
+  age_years: {
+    from: [date_of_birth,application_date], 
+    formula: "whole years between date_of_birth and the application date"}
+  
+  age_at_maturity: {
+    from: [date_of_birth, loan_tenure_months,application_date], 
+    formula: "age in whole years at the final instalment date"} # Find maximu maturity age
+
+  residency_category: {
+    from: [residency_status, citizenship], 
+    formula: "maps to sri_lankan_resident, permitted_non_resident or other"} 
+
+  months_in_employment_or_business: {
+    from: [application_date,employment_start_date, business_registration_date], 
+    formula: "months since employment_start_date or business_registration_date"}
+
+  debt_service_ratio_pct: {
+    from: [total_monthly_debt_obligations_cents, monthly_gross_income_cents], 
+    formula: "total_monthly_debt_obligations_cents / monthly_gross_income_cents * 100"}
+
+  foir_pct: {
+    from: [total_fixed_monthly_obligations_cents, monthly_net_income_cents], 
+    formula: "total_fixed_monthly_obligations_cents / monthly_net_income_cents * 100"}
+
+  net_disposable_income_cents: {
+    from: [monthly_net_income_cents, essential_living_expenses_cents, existing_debt_obligations_cents], 
+    formula: "monthly_net_income_cents - essential_living_expenses_cents - existing_debt_obligations_cents"}
+
+  residual_income_after_instalment_cents: {
+    from: [monthly_net_income_cents, existing_obligations_cents, proposed_instalment_cents, living_expenses_cents], 
+    formula: "monthly_net_income_cents - existing_obligations_cents - proposed_instalment_cents - living_expenses_cents"}
+
+  income_verified: {
+    from: [salary_slips, bank_statements, employer_confirmation, financial_statements], 
+    formula: "true when the required document set for the product is present and verified"}
+
+  aggregate_exposure_cents: {
+    from: [existing_loan_balance_cents, existing_instalment_cents, credit_card_limit_cents, credit_facility_amount_cents], 
+    formula: "all existing exposure of the borrower plus the new facility"}
+
+  within_single_borrower_limit: {
+    from: [aggregate_exposure_cents, regulatory_parameters.single_borrower_exposure], 
+    formula: "true when aggregate_exposure_cents <= limit_pct_of_capital_funds / 100 * capital_funds_cents"} # 15% of capital funds
+
+  ltv_pct: {
+    from: [credit_facility_amount_cents, collateral_value_cents], 
+    formula: "credit_facility_amount_cents / collateral_value_cents * 100 (percent)"}
+
+  valuation_age_days: {
+    from: [application_date,valuation_date], 
+    formula: "days between valuation_date and the application date"} # for property
+
+  insurance_expired: {
+    from: [application_date,insurance_expiry_date], 
+    formula: "true when insurance_expiry_date is before the application date"} # Expire of insurance
+
+  security_perfected: {
+    from: [product, mortgage_registered, lease_registered, lien_registered, pledge_recorded],
+    formula: "true when the registration the product needs (security_field_by_product in CP-SEC-005) is true"}
+
+
+  score_band: {
+    from: [internal_score], 
+    formula: "band A/B/C/D using score_bands of CP-RISK-001"} # Simple category of credit score
+
+  expected_loss_cents: {
+    from: [pd_pct, lgd_pct, ead_cents], 
+    formula: "pd_pct / 100 * lgd_pct / 100 * ead_cents"}   # scores are percent (0-100)
+
+  within_authority: {
+    from: [requested_amount_cents, risk_grade, exception_flag], 
+    formula: "true when an approver limit in the authority matrix covers the request"}
+
+  income_documents_complete: {
+    from: [salary_slips, bank_statements, employer_confirmation, financial_statements],
+    formula: "true when every document in required_documents_by_product for the product is present"}
+
+  collateral_documents_complete: {
+    from: [title_deed, vehicle_registration, valuation_report], 
+    formula: "true when the product's required collateral documents are present"}
+
+
+# CREDIT POLICY
+credit_policy:
+
+  # ---------------- Regulatory ----------------
+  - id: CP-REG-001
+    name: Vehicle LTV within regulatory cap
+    products: [vehicle_loan, vehicle_leasing]
+    inputs: [ltv_pct, credit_facility_amount_cents, collateral_value_cents, vehicle_class, vehicle_age_group, application_date]
+    check: {field: ltv_pct, op: lte, ref: regulatory_parameters.vehicle_ltv_cap}
+    parameters: {}
+    knock_out: true
+    reason_code: REG_VEHICLE_LTV_BREACH
+    enabled: true                              # cap depends on date, vehicle class and age; resolver not built yet
+
+
+  - id: CP-REG-002
+    name: Gold-loan LTV within regulatory cap
+    products: [gold_loan]
+    inputs: [ltv_pct, credit_facility_amount_cents, collateral_value_cents, application_date]
+    check: {field: ltv_pct, op: lte, ref: regulatory_parameters.gold_ltv_cap}
+    parameters: {}
+    knock_out: true
+    reason_code: REG_GOLD_LTV_BREACH
+    enabled: true                              # enable once the dated cap lookup is built
+
+  - id: CP-REG-003
+    name: Single-borrower exposure within limit
+    products: [all]
+    inputs: [aggregate_exposure_cents]
+    check: {field: within_single_borrower_limit, op: eq, value: true}
+    parameters: {}
+    knock_out: true
+    reason_code: REG_SINGLE_BORROWER_BREACH
+    enabled: true                              # capital_funds_cents not supplied yet
+
+
+  - id: CP-REG-004
+    name: No refinancing of an existing NPL
+    products: [all]
+    inputs: [refinances_existing_npl]
+    check: {field: refinances_existing_npl, op: eq, value: false}
+    parameters: {}
+    knock_out: true
+    reason_code: REG_NPL_REFINANCE_RESTRICTION
+    enabled: true
+
+  - id: CP-REG-005
+    name: No legal or sanctions restriction
+    products: [all]
+    inputs: [legal_restriction_flag]
+    check: {field: legal_restriction_flag, op: eq, value: false}
+    parameters: {}
+    knock_out: true
+    reason_code: REG_LEGAL_RESTRICTION
+    enabled: true
+
+  # ---------------- Borrower eligibility ----------------
+  - id: CP-ELG-001
+    name: Minimum borrower age
+    products: [all]
+    inputs: [date_of_birth,application_date]
+    check: {field: age_years, op: gte, param: min_age}
+    parameters: {min_age: 18}                   # source example
+    knock_out: true
+    reason_code: AGE_POLICY_BREACH
+    enabled: true
+
+  - id: CP-ELG-002
+    name: Maximum age at maturity
+    products: [all]
+    inputs: [date_of_birth, loan_tenure_months,application_date]
+    check: {field: age_at_maturity, op: lte, param: max_age_at_maturity}
+    parameters: {max_age_at_maturity: 65}       # source example
+    knock_out: true
+    reason_code: AGE_POLICY_BREACH
+    enabled: true
+
+  - id: CP-ELG-003 # from 3rd derived field
+    name: Residency / citizenship
+    products: [all]
+    inputs: [residency_status, citizenship]
+    check: {field: residency_category, op: in, param: permitted_categories}
+    parameters:
+      permitted_categories: [sri_lankan_resident, permitted_non_resident]
+      residency_mapping:                       # DEMO rule, first match wins (confirm with the lender)
+        - {citizenship: LK, residency_status: resident,     category: sri_lankan_resident}
+        - {citizenship: LK, residency_status: non_resident, category: permitted_non_resident}
+      residency_default: other
+    knock_out: true
+    reason_code: RESIDENCY_NOT_PERMITTED
+    enabled: true
+
+  - id: CP-ELG-004 # check again this one
+    name: Employment status
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [employment_type]
+    check: {field: employment_type, op: in, param: permitted_types}
+    parameters:
+      permitted_types: [salaried, self_employed, pensioner, business_owner]   # source example
+    knock_out: true
+    reason_code: EMPLOYMENT_TYPE_NOT_PERMITTED
+    enabled: true
+
+  - id: CP-ELG-005
+    name: Minimum employment / business vintage
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [application_date, employment_start_date, business_registration_date]
+    check: {field: months_in_employment_or_business, op: gte, param: min_vintage_months}
+    parameters:
+      min_vintage_months: {vehicle_loan: 6, vehicle_leasing: 12, personal_loan: 6, sme_loan: 24}
+    knock_out: true
+    reason_code: EMPLOYMENT_VINTAGE_TOO_SHORT
+    enabled: true
+
+  - id: CP-ELG-006
+    name: Minimum income
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [monthly_gross_income_cents]
+    check: {field: monthly_gross_income_cents, op: gte, param: min_monthly_income_cents_by_product}
+    parameters:
+      min_monthly_income_cents_by_product: {vehicle_loan: 7500000, vehicle_leasing: 10000000, personal_loan: 5000000, sme_loan: 15000000}
+    knock_out: true
+    reason_code: INCOME_BELOW_MINIMUM
+    enabled: true                              # minimum income not set
+
+
+  - id: CP-ELG-007
+    name: Co-borrower / guarantor eligibility
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    applies_when: {field: has_guarantor, op: eq, value: true}
+    inputs: [has_guarantor, guarantor_income_cents, guarantor_crib_status]
+    check:
+      all:
+        - {field: guarantor_income_cents, op: gte, param: min_guarantor_income_cents}
+        - {field: guarantor_crib_status, op: in, param: acceptable_guarantor_crib_status}
+    parameters:
+      min_guarantor_income_cents: {vehicle_loan: 7500000, vehicle_leasing: 10000000, personal_loan: 5000000, sme_loan: 15000000}
+      acceptable_guarantor_crib_status: &guarantor_crib [clear, satisfactory]
+    knock_out: true
+    reason_code: GUARANTOR_NOT_ELIGIBLE
+    enabled: true
+
+  - id: CP-ELG-008
+    name: Identity verification
+    products: [all]
+    inputs: [identity_verified]
+    check: {field: identity_verified, op: eq, value: true}
+    parameters: {}
+    knock_out: true
+    reason_code: KYC_IDENTITY_FAILURE
+    enabled: true
+
+  # ---------------- Income and affordability ----------------
+  - id: CP-AFF-001
+    name: Debt Service Ratio
+    products: [all]
+    inputs: [total_monthly_debt_obligations_cents, monthly_gross_income_cents]
+    check: {field: debt_service_ratio_pct, op: lte, param: max_dsr_pct}
+    parameters:
+      max_dsr_pct: {vehicle_loan: 50, vehicle_leasing: 50, gold_loan: 60, personal_loan: 40, sme_loan: 55}
+    knock_out: true
+    reason_code: AFFORDABILITY_BREACH
+    enabled: true
+
+  - id: CP-AFF-002
+    name: Fixed Obligation to Income Ratio
+    products: [all]
+    inputs: [total_fixed_monthly_obligations_cents, monthly_net_income_cents]
+    check: {field: foir_pct, op: lte, param: max_foir_pct}
+    parameters:
+      max_foir_pct: {vehicle_loan: 55, vehicle_leasing: 55, gold_loan: 65, personal_loan: 50, sme_loan: 60}
+    knock_out: true
+    reason_code: AFFORDABILITY_BREACH
+    enabled: true
+
+  - id: CP-AFF-003
+    name: Net Disposable Income
+    products: [all]
+    inputs: [monthly_net_income_cents, essential_living_expenses_cents, existing_debt_obligations_cents]
+    check: {field: net_disposable_income_cents, op: gte, param: min_ndi_cents}
+    parameters:
+      min_ndi_cents: {vehicle_loan: 2500000, vehicle_leasing: 3000000, gold_loan: 1500000, personal_loan: 2500000, sme_loan: 4000000}
+    knock_out: true
+    reason_code: NDI_BELOW_MINIMUM
+    enabled: true
+
+  - id: CP-AFF-004
+    name: Residual income after proposed instalment
+    products: [all]
+    inputs: [monthly_net_income_cents, existing_obligations_cents, proposed_instalment_cents, living_expenses_cents]
+    check: {field: residual_income_after_instalment_cents, op: gte, param: min_residual_income_cents}
+    parameters:
+      min_residual_income_cents: {vehicle_loan: 2000000, vehicle_leasing: 2500000, gold_loan: 1000000, personal_loan: 2000000, sme_loan: 3000000}
+    knock_out: true
+    reason_code: RESIDUAL_INCOME_BELOW_MINIMUM
+    enabled: true
+
+  - id: CP-AFF-005
+    name: Income verification
+    products: [all]
+    inputs: [salary_slips, bank_statements, employer_confirmation, financial_statements]
+    check: {field: income_verified, op: eq, value: true}
+    parameters:
+      required_documents_by_product: &income_docs
+        vehicle_loan: [salary_slips, bank_statements, employer_confirmation]
+        vehicle_leasing: [salary_slips, bank_statements, employer_confirmation]
+        gold_loan: []
+        personal_loan: [salary_slips, bank_statements, employer_confirmation]
+        sme_loan: [financial_statements, bank_statements]
+    knock_out: true
+    reason_code: INCOME_NOT_VERIFIED
+    enabled: true
+
+  - id: CP-AFF-006
+    name: Income stability
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [months_of_continuous_income]
+    check: {field: months_of_continuous_income, op: gte, param: min_continuous_income_months}
+    parameters:
+      min_continuous_income_months: {vehicle_loan: 6, vehicle_leasing: 6, personal_loan: 6, sme_loan: 12}
+    knock_out: true
+    reason_code: INCOME_UNSTABLE
+    enabled: true
+
+
+  # ---------------- Credit history and exposure ----------------
+  - id: CP-CRIB-001
+    name: CRIB report obtained
+    products: [all]
+    inputs: [crib_consent, crib_report_id, crib_report_available]
+    check: {field: crib_report_available, op: eq, value: true}
+    parameters: {}
+    knock_out: true
+    reason_code: CRIB_REPORT_UNAVAILABLE
+    enabled: true
+
+  - id: CP-CRIB-002
+    name: CRIB adverse-history assessment
+    products: [all]
+    inputs: [crib_arrears, crib_status, worst_arrears_days]
+    check: {field: worst_arrears_days, op: lte, param: severe_dpd_days}
+    parameters:
+      severe_dpd_days: {vehicle_loan: 90, vehicle_leasing: 90, gold_loan: 90, personal_loan: 60, sme_loan: 90}
+    knock_out: true
+    reason_code: CRIB_ADVERSE_HISTORY
+    enabled: true
+
+  - id: CP-CRIB-003
+    name: Existing facility exposure
+    products: [all]
+    inputs: [existing_loan_balance_cents, existing_instalment_cents, credit_card_limit_cents, credit_facility_amount_cents]
+    check: {field: aggregate_exposure_cents, op: lte, param: max_total_exposure_cents}
+    parameters:
+      max_total_exposure_cents: {vehicle_loan: 1500000000, vehicle_leasing: 2500000000, gold_loan: 1000000000, personal_loan: 500000000, sme_loan: 5000000000}
+    knock_out: true
+    reason_code: EXPOSURE_ABOVE_LIMIT
+    enabled: true
+
+  - id: CP-CRIB-004
+    name: No active NPL
+    products: [all]
+    inputs: [npl_flag, worst_arrears_days, facility_status]
+    check: {field: npl_flag, op: eq, value: false}
+    parameters: {}
+    knock_out: true
+    reason_code: EXISTING_NPL
+    enabled: true
+
+  - id: CP-CRIB-005
+    name: Guarantor CRIB assessment
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [has_guarantor, guarantor_crib_status]
+    applies_when: {field: has_guarantor, op: eq, value: true}
+    check: {field: guarantor_crib_status, op: in, param: acceptable_guarantor_crib_status}
+    parameters:
+      acceptable_guarantor_crib_status: *guarantor_crib
+    knock_out: true
+    reason_code: GUARANTOR_CRIB_UNACCEPTABLE
+    enabled: true
+
+  # ---------------- Loan structure ----------------
+  - id: CP-STR-001
+    name: Minimum loan amount
+    products: [all]
+    inputs: [requested_amount_cents]
+    check: {field: requested_amount_cents, op: gte, param: min_amount_cents_by_product}
+    parameters:
+      min_amount_cents_by_product: {vehicle_loan: 50000000, vehicle_leasing: 100000000, gold_loan: 2500000, personal_loan: 10000000, sme_loan: 50000000}
+    knock_out: true
+    reason_code: LOAN_AMOUNT_BELOW_MINIMUM
+    enabled: true
+
+  - id: CP-STR-002
+    name: Maximum loan amount
+    products: [all]
+    inputs: [requested_amount_cents]
+    check: {field: requested_amount_cents, op: lte, param: max_amount_cents_by_product}
+    parameters:
+      max_amount_cents_by_product: {vehicle_loan: 1200000000, vehicle_leasing: 2000000000, gold_loan: 500000000, personal_loan: 300000000, sme_loan: 4000000000}
+    knock_out: true
+    reason_code: LOAN_AMOUNT_ABOVE_MAXIMUM
+    enabled: true
+
+  - id: CP-STR-003
+    name: Minimum tenure
+    products: [all]
+    inputs: [loan_tenure_months]
+    check: {field: loan_tenure_months, op: gte, param: min_tenure_months_by_product}
+    parameters:
+      min_tenure_months_by_product: {vehicle_loan: 12, vehicle_leasing: 12, gold_loan: 1, personal_loan: 6, sme_loan: 6}
+    knock_out: true
+    reason_code: TENURE_BELOW_MINIMUM
+    enabled: true
+
+  - id: CP-STR-004
+    name: Maximum tenure
+    products: [all]
+    inputs: [loan_tenure_months]
+    check: {field: loan_tenure_months, op: lte, param: max_tenure_months_by_product}
+    parameters:
+      max_tenure_months_by_product: {vehicle_loan: 84, vehicle_leasing: 84, gold_loan: 12, personal_loan: 60, sme_loan: 84}
+    knock_out: true
+    reason_code: TENURE_ABOVE_MAXIMUM
+    enabled: true
+
+  - id: CP-STR-005
+    name: Permitted repayment frequency
+    products: [all]
+    inputs: [repayment_frequency]
+    check: {field: repayment_frequency, op: in, param: permitted_frequencies}
+    parameters: {permitted_frequencies: [monthly, fortnightly, weekly]}   # source example
+    knock_out: true
+    reason_code: REPAYMENT_FREQUENCY_NOT_PERMITTED
+    enabled: true
+
+  - id: CP-STR-006
+    name: Purpose restriction
+    products: [all]
+    inputs: [loan_purpose]
+    check: {field: loan_purpose, op: in, param: allowed_purposes}
+    parameters:
+      allowed_purposes:
+        vehicle_loan: [vehicle_purchase]
+        vehicle_leasing: [vehicle_purchase]
+        gold_loan: [working_capital, personal_use, education, medical, agriculture]
+        personal_loan: [education, medical, home_improvement, debt_consolidation, travel, personal_use]
+        sme_loan: [working_capital, equipment_purchase, expansion, inventory]
+    knock_out: true
+    reason_code: PURPOSE_NOT_PERMITTED
+    enabled: true
+
+  # ---------------- Collateral and security ----------------
+  - id: CP-SEC-001
+    name: Loan-to-Value Ratio (lender cap)
+    products: [vehicle_loan, vehicle_leasing, gold_loan]
+    inputs: [credit_facility_amount_cents, collateral_value_cents]
+    check: {field: ltv_pct, op: lte, param: max_ltv_pct_by_product}
+    parameters:
+      max_ltv_pct_by_product: {vehicle_loan: 60, vehicle_leasing: 60, gold_loan: 65}   # lender cap; the dated CBSL cap is checked by CP-REG-001/002
+    knock_out: true
+    reason_code: LTV_ABOVE_LIMIT
+    enabled: true
+
+  - id: CP-SEC-002
+    name: Collateral ownership
+    products: [vehicle_loan, vehicle_leasing, gold_loan, sme_loan]
+    inputs: [collateral_owner, ownership_documents]
+    check: {field: collateral_owner, op: in, param: permitted_owners}
+    parameters: {permitted_owners: [borrower, approved_third_party]}
+    knock_out: true
+    reason_code: COLLATERAL_OWNERSHIP_INVALID
+    enabled: true
+
+
+  - id: CP-SEC-003
+    name: Valuation validity
+    products: [vehicle_loan, vehicle_leasing, gold_loan, sme_loan]
+    inputs: [valuation_date, valuation_amount_cents, valuer_id,application_date]
+    check:
+      all:
+        - {field: valuation_age_days, op: lte, param: max_valuation_age_days}
+        - {field: valuer_id, op: in, param: approved_valuers}
+    parameters:
+      max_valuation_age_days: {vehicle_loan: 90, vehicle_leasing: 90, gold_loan: 30, sme_loan: 180}
+      approved_valuers: [VAL-001, VAL-002, VAL-003]
+    knock_out: true
+    reason_code: VALUATION_NOT_VALID
+    enabled: true
+
+  - id: CP-SEC-004
+    name: Insurance requirement
+    products: [vehicle_loan, vehicle_leasing, sme_loan]
+    inputs: [insurance_status, insurance_expiry_date,application_date]
+    check:
+      all:
+        - {field: insurance_status, op: eq, param: required_cover}
+        - {field: insurance_expired, op: eq, value: false}
+    parameters: {required_cover: comprehensive}
+    knock_out: true
+    reason_code: INSURANCE_NOT_VALID
+    enabled: true
+
+
+  - id: CP-SEC-005
+    name: Security perfection
+    products: [vehicle_loan, vehicle_leasing, gold_loan, sme_loan]
+    inputs: [mortgage_registered, lease_registered, lien_registered, pledge_recorded]
+    check: {field: security_perfected, op: eq, value: true}
+    parameters:
+      security_field_by_product: {vehicle_loan: lien_registered, vehicle_leasing: lease_registered, gold_loan: pledge_recorded, sme_loan: mortgage_registered}   # DEMO, confirm
+    knock_out: true
+    reason_code: SECURITY_NOT_PERFECTED
+    enabled: true
+
+  # ---------------- Risk grading ----------------
+  - id: CP-RISK-001
+    name: Internal credit score
+    products: [all]
+    inputs: [internal_score]
+    check: {field: score_band, op: in, param: acceptable_bands}
+    parameters:
+      score_bands: {A: 750, B: 650, C: 550, D: 0}      # minimum internal_score for each band (score scale 0-1000)
+      acceptable_bands: {vehicle_loan: [A, B, C], vehicle_leasing: [A, B, C], gold_loan: [A, B, C, D], personal_loan: [A, B], sme_loan: [A, B, C]}
+    knock_out: false
+    stage: after_scoring     # other rules: before_scoring (the default)
+    reason_code: RISK_GRADE_BELOW_CUTOFF
+    enabled: true
+
+
+  - id: CP-RISK-002
+    name: Probability of Default
+    products: [all]
+    inputs: [pd_pct]
+    check: {field: pd_pct, op: lte, param: max_pd_pct_by_product}
+    parameters:
+      max_pd_pct_by_product: {vehicle_loan: 8, vehicle_leasing: 8, gold_loan: 15, personal_loan: 6, sme_loan: 10}
+    knock_out: false
+    stage: after_scoring     # other rules: before_scoring (the default)
+    reason_code: PD_ABOVE_LIMIT
+    enabled: true
+
+  - id: CP-RISK-003
+    name: Expected Loss
+    products: [all]
+    inputs: [pd_pct, lgd_pct, ead_cents]
+    check: {field: expected_loss_cents, op: lte, param: max_expected_loss_cents_by_product}
+    parameters:
+      max_expected_loss_cents_by_product: {vehicle_loan: 25000000, vehicle_leasing: 40000000, gold_loan: 10000000, personal_loan: 10000000, sme_loan: 80000000}
+    knock_out: false
+    stage: after_scoring     # other rules: before_scoring (the default)
+    reason_code: EXPECTED_LOSS_ABOVE_LIMIT
+    enabled: true
+
+  - id: CP-RISK-004
+    name: Risk grade is priceable
+    products: [all]
+    inputs: [risk_grade]
+    check: {field: risk_grade, op: in, param: priced_grades}
+    parameters:
+      priced_grades: {vehicle_loan: [A, B, C], vehicle_leasing: [A, B, C], gold_loan: [A, B, C, D], personal_loan: [A, B], sme_loan: [A, B, C]}
+      price_grid: null                                   # used by the pricing stage (PRI), not by this check
+    knock_out: false
+    stage: after_scoring     # other rules: before_scoring (the default)
+    reason_code: RISK_GRADE_NOT_PRICED
+    enabled: true
+
+  - id: CP-RISK-005
+    name: Approval authority
+    products: [all]
+    inputs: [requested_amount_cents, risk_grade, exception_flag]
+    check: {field: within_authority, op: eq, value: true}
+    parameters:
+      authority_matrix:                                  # DEMO limits (cents); used for DEC-06 assignment
+        - {level: credit_officer,        max_amount_cents: 100000000,  max_risk_grade: B, allows_exceptions: false}
+        - {level: senior_credit_officer, max_amount_cents: 500000000,  max_risk_grade: C, allows_exceptions: false}
+        - {level: credit_manager,        max_amount_cents: 1500000000, max_risk_grade: C, allows_exceptions: true}
+        - {level: credit_committee,      max_amount_cents: 5000000000, max_risk_grade: D, allows_exceptions: true}
+    knock_out: false
+    stage: after_scoring     # other rules: before_scoring (the default)
+    reason_code: AUTHORITY_LIMIT_EXCEEDED
+    enabled: true
+
+  # ---------------- Documentation and compliance ----------------
+  - id: CP-DOC-001
+    name: KYC documents
+    products: [all]
+    inputs: [nic_or_passport, address_proof, photos]
+    check:
+      all:
+        - {field: nic_or_passport, op: eq, value: true}
+        - {field: address_proof, op: eq, value: true}
+        - {field: photos, op: eq, value: true}
+    parameters: {}
+    knock_out: true
+    reason_code: KYC_DOCUMENTS_MISSING
+    enabled: true
+
+  - id: CP-DOC-002
+    name: Income documents
+    products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+    inputs: [salary_slips, bank_statements, employer_confirmation, financial_statements]
+    check: {field: income_documents_complete, op: eq, value: true}
+    parameters:
+      required_documents_by_product: *income_docs
+    knock_out: true
+    reason_code: INCOME_DOCUMENTS_MISSING
+    enabled: true
+
+  - id: CP-DOC-003
+    name: CRIB consent
+    products: [all]
+    inputs: [crib_consent_flag]
+    check: {field: crib_consent_flag, op: eq, value: true}
+    parameters: {}
+    knock_out: true
+    reason_code: CRIB_CONSENT_MISSING
+    enabled: true
+
+  - id: CP-DOC-004
+    name: Collateral documents
+    products: [vehicle_loan, vehicle_leasing, gold_loan, sme_loan]
+    inputs: [title_deed, vehicle_registration, valuation_report]
+    check: {field: collateral_documents_complete, op: eq, value: true}
+    parameters:
+      required_documents_by_product:
+        vehicle_loan: [vehicle_registration, valuation_report]
+        vehicle_leasing: [vehicle_registration, valuation_report]
+        gold_loan: [valuation_report]
+        sme_loan: [title_deed, valuation_report]
+    knock_out: true
+    reason_code: COLLATERAL_DOCUMENTS_MISSING
+    enabled: true
+
+  - id: CP-DOC-005
+    name: Sanctions / AML check
+    products: [all]
+    inputs: [sanctions_screening_result]
+    check: {field: sanctions_screening_result, op: eq, value: no_match}
+    parameters: {}
+    knock_out: true
+    reason_code: SANCTIONS_MATCH
+    enabled: true
+
+  - id: CP-DOC-006
+    name: No fraud or falsified documents
+    products: [all]
+    inputs: [fraud_indicator_verified]
+    check: {field: fraud_indicator_verified, op: eq, value: false}
+    parameters: {}
+    knock_out: true
+    reason_code: FRAUD_DOCUMENTATION
+    enabled: true
+    note: "Verified fraud indicator"
