@@ -36,9 +36,11 @@ class RulesEngine:
                 "derived_fields": pack.derived_fields,
                 "regulatory_parameters": pack.regulatory_parameters,
                 "reason_texts": pack.reason_texts,
+                "scorecard": pack.scorecard,
             }
         self.rule_set_version = str(pack["rule_set_version"])
         self.reason_texts = dict(pack.get("reason_texts") or {})
+        self.scorecard = dict(pack.get("scorecard") or {})
         self.products = list(pack["products"])
         self.on_failure = pack["on_rule_failure"]
         self.rules = [r for r in pack["credit_policy"] if r["enabled"]]
@@ -53,6 +55,12 @@ class RulesEngine:
         return [r for r in self.rules
                 if r.get("stage", "before_scoring") == stage
                 and ("all" in r["products"] or product in r["products"])]
+
+    def value(self, name: str, features: dict, product: str | None = None):
+        """One field of the snapshot, calculated from a formula if the snapshot does not hold it.
+        Raises MissingData when it cannot be had (used by the scorer)."""
+        ctx = {"product": product, "regulatory": self.regulatory, "parameters": {}}
+        return self._field(name, features, ctx)
 
     # ---- one question
     def _field(self, name, features, ctx):
