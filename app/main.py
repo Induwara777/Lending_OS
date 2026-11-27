@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.services.decision_service import DecisionService
 from app.services.decision_store import InMemoryDecisionStore
 from app.services.rules_engine import RulesEngine
-from app.services.scorer import StubScorer
+from app.services.scorer import BaselineScorer, StubScorer
 
 log = logging.getLogger("decision_engine")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -36,7 +36,12 @@ def create_app(pack_path: str | Path | None = None, dev_endpoints: bool | None =
         app.state.pack = pack
         app.state.engine = RulesEngine(pack)
         app.state.store = InMemoryDecisionStore()
-        app.state.decisions = DecisionService(app.state.engine, StubScorer())   # StubScorer until the baseline scorer exists
+        if app.state.engine.scorecard:
+            scorer = BaselineScorer(app.state.engine)
+        else:
+            log.warning("the client pack has no scorecard: every decision will be REFER (scoring unavailable)")
+            scorer = StubScorer()                    # finds no scores in a real snapshot, so scoring is unavailable
+        app.state.decisions = DecisionService(app.state.engine, scorer)
         log.info("started with client pack %s (rules %s)", pack.pack_version, pack.rule_set_version)
         yield
 
