@@ -10,6 +10,8 @@ import calendar
 from datetime import date, datetime
 from typing import Any
 
+from app.services import maths_fun
+
 
 class NotConfigured(Exception):
     """A limit the rule needs is still null in the client pack (rule is skipped)."""
@@ -51,7 +53,7 @@ def _ratio(num: str, den: str, scale: int = 1):
         d = get(den)
         if d == 0:
             raise MissingData(f"{den} is zero")
-        return get(num) / d * scale
+        return maths_fun.ratio_pct(get(num), d) * scale / 100
     return calc
 
 
@@ -138,7 +140,7 @@ DERIVED = {
     "ltv_pct": _ratio("credit_facility_amount_cents", "collateral_value_cents", 100),
     "valuation_age_days": lambda g, c: (to_date(g("application_date")) - to_date(g("valuation_date"))).days,
     "insurance_expired": lambda g, c: to_date(g("insurance_expiry_date")) < to_date(g("application_date")),
-    "expected_loss_cents": lambda g, c: g("pd_pct") / 100 * g("lgd_pct") / 100 * g("ead_cents"),   # scores are percent
+    "expected_loss_cents": lambda g, c: maths_fun.expected_loss(g("pd_pct"), g("lgd_pct"), g("ead_cents")),
     "within_single_borrower_limit": lambda g, c: _within_single_borrower(g, c),
     "income_documents_complete": _documents_present,
     "collateral_documents_complete": _documents_present,
