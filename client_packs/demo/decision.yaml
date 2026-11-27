@@ -73,6 +73,64 @@ reason_texts:
   FRAUD_DOCUMENTATION: "A verified fraud indicator was found in the documents."
   DATA_MISSING: "Required information is missing, so an officer must review the application."
   SCORING_UNAVAILABLE: "The risk score could not be calculated, so an officer must review the application."
+  
+
+# SCORING SYSTEM WILL BE CHECKED AGAIN.
+scorecard:
+  version: baseline-1.0-demo                 # reported as model_version in every decision
+  base_points: 500
+  factors:                                   
+    - id: arrears # SCORE : NON PAID DAYS AFTER DEADLINE ; COMING FROM CHANUTHI
+      field: worst_arrears_days
+      bands: [{up_to: 0, points: 80}, {up_to: 30, points: 20}, {up_to: 60, points: -40}, {up_to: 90, points: -100}, {points: -200}]
+
+    - id: debt_service_ratio # SCORE : DEBT SERVICE RATIO
+      field: debt_service_ratio_pct
+      bands: [{up_to: 20, points: 60}, {up_to: 35, points: 30}, {up_to: 45, points: 0}, {points: -50}]
+
+    - id: employment_length # SCORE : TIME PERIOD OF EMPLOYEMENT
+      field: months_in_employment_or_business
+      products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+      bands: [{up_to: 11, points: -30}, {up_to: 35, points: 0}, {up_to: 119, points: 30}, {points: 50}]
+
+
+    - id: employment_type # SCORE : EMPLOYEMENT CATEGORY
+      field: employment_type
+      products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+      map: {salaried: 40, pensioner: 30, self_employed: 10, business_owner: 10}
+      default: 0
+
+    - id: income_continuity # SCORE: MONTHLY INCOME CONTINUITY
+      field: months_of_continuous_income
+      products: [vehicle_loan, vehicle_leasing, personal_loan, sme_loan]
+      bands: [{up_to: 11, points: -20}, {up_to: 35, points: 10}, {points: 30}]
+
+    - id: loan_to_value # SCORE: LOAN TO VALUE RATIO FOR GOLD AND VEHICLE LOANS
+      field: ltv_pct
+      products: [vehicle_loan, vehicle_leasing, gold_loan]
+      bands: [{up_to: 30, points: 50}, {up_to: 50, points: 25}, {up_to: 60, points: 0}, {points: -40}]
+
+   # FULL SCORE
+  grades:      
+    - {min_score: 750, grade: A, pd_pct: 1.5}
+    - {min_score: 650, grade: B, pd_pct: 3.5}
+    - {min_score: 550, grade: C, pd_pct: 6.0}
+    - {min_score: 0,   grade: D, pd_pct: 12.0}
+
+  # CALCULATED FIELDS : LOSS GIEVN DEFAULT
+  lgd_by_product:                            
+    vehicle_loan:    {haircut_pct: 30, floor_pct: 10}
+    vehicle_leasing: {haircut_pct: 25, floor_pct: 10}
+    gold_loan:       {haircut_pct: 15, floor_pct: 10}
+    sme_loan:        {haircut_pct: 40, floor_pct: 15}
+    personal_loan:   {fixed_pct: 70} 
+
+  # SUSPICIOS BEHAVIOR
+  fraud:                                    
+    flags:
+      - {field: income_mismatch_flag,       points: 40}
+      - {field: mobile_mismatch_flag,       points: 25}
+      - {field: duplicate_application_flag, points: 15}
 
 # CBSL Policy with dates (unchanged)
 regulatory_parameters:
