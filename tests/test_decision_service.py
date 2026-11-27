@@ -7,18 +7,19 @@ from app.clientpack.loader import load_client_pack
 from app.domain.models import DecidedBy, DecisionRequest, Outcome
 from app.services.decision_service import DecisionService, hash_features
 from app.services.rules_engine import RulesEngine
-from app.services.scorer import StubScorer
-from tests.test_sample import sample_customer
+from app.services.scorer import BaselineScorer, StubScorer
+from tests.test_sample import STUB_SCORES, sample_customer
 
 PACK = Path(__file__).parent.parent / "client_packs" / "demo" / "decision.yaml"
 
 
-def service():
-    return DecisionService(RulesEngine(load_client_pack(PACK)), StubScorer())
+def service(stub=False):
+    engine = RulesEngine(load_client_pack(PACK))
+    return DecisionService(engine, StubScorer() if stub else BaselineScorer(engine))
 
 
-def decide(features, product="personal_loan", **kw):
-    return service().decide(DecisionRequest(application_id=uuid4(), product=product, features=features), **kw)
+def decide(features, product="personal_loan", stub=False, **kw):
+    return service(stub).decide(DecisionRequest(application_id=uuid4(), product=product, features=features), **kw)
 
 
 def codes(record):
@@ -30,7 +31,7 @@ def test_clean_applicant_is_approved_for_every_product():
         d = decide(sample_customer(product), product).decision
         assert d.outcome == Outcome.APPROVE and d.reasons == [], product
         assert d.decided_by == DecidedBy.SYSTEM
-        assert d.scores.pd_pct == 2.0 and d.scores.model_version == "stub-0"
+        assert d.scores.pd_pct == 3.5 and d.scores.model_version == "baseline-1.0-demo"
         assert d.rule_set_version == "policy-rules-2.0.0"
         assert d.decided_at.tzinfo is not None
 
@@ -57,21 +58,24 @@ def test_missing_data_is_refer_with_a_readable_text():
 
 
 def test_scoring_unavailable_is_refer_never_approve():
-    data = {k: v for k, v in sample_customer("personal_loan").items() if k not in ("pd_pct", "lgd_pct")}
-    record = decide(data)
+    record = decide(sample_customer("personal_loan"), stub=True)       # the stub finds no scores in the snapshot
     assert record.decision.outcome == Outcome.REFER
     assert codes(record) == ["SCORING_UNAVAILABLE"]
     assert record.decision.scores is None
 
 
-def test_pd_above_limit_is_refer_after_scoring():
-    record = decide({**sample_customer("personal_loan"), "pd_pct": 9.0})      # limit for personal loans is 6
+def test_a_high_pd_is_refer_after_scoring():
+    # arrears 45 days (-40) and DSR 40 % (0 points) bring the score to 540: grade D, PD 12 %, above the 6 % limit
+    data = {**sample_customer("personal_loan"), "worst_arrears_days": 45, "total_monthly_debt_obligations_cents": 10000000}
+    record = decide(data)
     assert record.decision.outcome == Outcome.REFER
-    assert "PD_ABOVE_LIMIT" in codes(record)
+    assert {"PD_ABOVE_LIMIT", "RISK_GRADE_BELOW_CUTOFF"} <= set(codes(record))
+    assert record.decision.scores.pd_pct == 12.0 and record.decision.scores.model_version == "baseline-1.0-demo"
 
 
 def test_risk_grade_outside_the_authority_matrix_is_refer():
-    record = decide({**sample_customer("sme_loan"), "risk_grade": "E"}, "sme_loan")     # no approver level covers grade E
+    scores = {**STUB_SCORES, "risk_grade": "E"}                         # no approver level covers grade E
+    record = decide({**sample_customer("sme_loan"), **scores}, "sme_loan", stub=True)
     assert record.decision.outcome == Outcome.REFER and "AUTHORITY_LIMIT_EXCEEDED" in codes(record)
 
 
@@ -92,7 +96,7 @@ def test_features_hash_is_stable_and_can_be_supplied():
     assert hash_features(data) == hash_features(dict(reversed(list(data.items()))))
     assert decide(data).features_hash == hash_features(data)
     assert decide(data, snapshot_hash="abc123").features_hash == "abc123"
-    assert hash_features({**data, "pd_pct": 3.0}) != hash_features(data)
+    assert hash_features({**data, "worst_arrears_days": 5}) != hash_features(data)
 
 
 def test_every_decision_gets_its_own_id():

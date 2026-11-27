@@ -21,7 +21,7 @@ BASE = {
     "crib_consent": True, "crib_consent_flag": True, "crib_report_id": "CRIB-1",
     "crib_report_available": True, "crib_status": "clear", "crib_arrears": 0,
     "worst_arrears_days": 0, "npl_flag": False, "facility_status": "performing",
-    "has_guarantor": False,
+    "has_guarantor": False, "exception_flag": False,
     "nic_or_passport": True, "address_proof": True, "photos": True,
     "sanctions_screening_result": "no_match", "fraud_indicator_verified": False,
     "salary_slips": True, "bank_statements": True, "employer_confirmation": True,
@@ -36,9 +36,8 @@ BASE = {
     "pledge_recorded": True,
 }
 
-# fields that come from the scoring step (stage: after_scoring)
-SCORING = {"pd_pct": 2.0, "lgd_pct": 40.0, "internal_score": 800, 
-           "risk_grade": "A", "exception_flag": False}
+# Ready-made scores, only for tests that use the StubScorer. The real scorer calculates its own.
+STUB_SCORES = {"pd_pct": 2.0, "lgd_pct": 40.0, "internal_score": 800, "risk_grade": "A", "model_version": "stub-0"}
 
 PRODUCT_DATA = {
     "vehicle_loan": {"requested_amount_cents": 200000000, "credit_facility_amount_cents": 200000000,
@@ -60,6 +59,4 @@ PRODUCT_DATA = {
 
 
 def sample_customer(product: str) -> dict:
-    data = {**BASE, **PRODUCT_DATA[product], **SCORING}
-    data["ead_cents"] = data["credit_facility_amount_cents"]
-    return data
+    return {**BASE, **PRODUCT_DATA[product]}
