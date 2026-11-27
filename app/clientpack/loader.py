@@ -39,6 +39,7 @@ class ClientPack:
     regulatory_parameters: dict[str, Any]
     warnings: tuple[str, ...]
     reason_texts: dict[str, str] = field(default_factory=dict)
+    scorecard: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- checks
@@ -96,6 +97,90 @@ def _param_names(check):
         return []
     items = check.get("all") or check.get("any") or [check]
     return [i["param"] for i in items if isinstance(i, dict) and "param" in i]
+
+
+
+def _num(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _validate_scorecard(card, products, errors, warnings):
+    """The baseline scorecard (DEC-02). Every problem is listed, as for the rules."""
+    if not isinstance(card, dict):
+        errors.append("scorecard must be a mapping")
+        return
+    for key in ("version", "base_points", "factors", "grades", "lgd_by_product"):
+        if key not in card:
+            errors.append(f"scorecard: missing {key}")
+    if "version" in card and (not isinstance(card["version"], str) or not card["version"].strip()):
+        errors.append("scorecard.version must be a non-empty text")
+    if "base_points" in card and not _num(card["base_points"]):
+        errors.append("scorecard.base_points must be a number")
+
+    factors = card.get("factors")
+    if "factors" in card and (not isinstance(factors, list) or not factors):
+        errors.append("scorecard.factors must be a non-empty list")
+    for i, f in enumerate(factors if isinstance(factors, list) else [], 1):
+        fid = f.get("id", f"factor {i}") if isinstance(f, dict) else f"factor {i}"
+        if not isinstance(f, dict) or not isinstance(f.get("field"), str) or not isinstance(f.get("id"), str):
+            errors.append(f"scorecard {fid}: needs an id and a field")
+            continue
+        for p_ in f.get("products", []):
+            if p_ not in products:
+                errors.append(f"scorecard {fid}: product '{p_}' is not in the products list")
+        if ("bands" in f) == ("map" in f):
+            errors.append(f"scorecard {fid}: needs exactly one of bands / map")
+        elif "bands" in f:
+            bands = f["bands"]
+            if not isinstance(bands, list) or not bands or not all(isinstance(b, dict) and _num(b.get("points")) for b in bands):
+                errors.append(f"scorecard {fid}: bands must be a list of {{up_to, points}}")
+                continue
+            limits = [b.get("up_to") for b in bands[:-1]]
+            if not all(_num(x) for x in limits) or limits != sorted(limits):
+                errors.append(f"scorecard {fid}: every band except the last needs an up_to, in rising order")
+            if "up_to" in bands[-1]:
+                errors.append(f"scorecard {fid}: the last band must have no up_to (it catches everything above)")
+        else:
+            if not isinstance(f["map"], dict) or not all(_num(v) for v in f["map"].values()):
+                errors.append(f"scorecard {fid}: map must give a number of points for each value")
+            if "default" in f and not _num(f["default"]):
+                errors.append(f"scorecard {fid}: default must be a number")
+
+    grades = card.get("grades")
+    if "grades" in card:
+        ok = (isinstance(grades, list) and grades and all(
+            isinstance(g, dict) and _num(g.get("min_score")) and isinstance(g.get("grade"), str)
+            and _num(g.get("pd_pct")) and 0 <= g["pd_pct"] <= 100 for g in grades))
+        if not ok:
+            errors.append("scorecard.grades must be a list of {min_score, grade, pd_pct 0-100}")
+        else:
+            mins = [g["min_score"] for g in grades]
+            if mins != sorted(mins, reverse=True):
+                errors.append("scorecard.grades must be listed from the highest min_score to the lowest")
+            if mins[-1] > 0:
+                errors.append("scorecard.grades: the last grade must have min_score 0 (or lower) so every score gets a grade")
+
+    lgd = card.get("lgd_by_product")
+    if "lgd_by_product" in card:
+        if not isinstance(lgd, dict):
+            errors.append("scorecard.lgd_by_product must be a mapping")
+        else:
+            for prod, spec in lgd.items():
+                good = isinstance(spec, dict) and (
+                    (set(spec) == {"fixed_pct"} and _num(spec["fixed_pct"]) and 0 <= spec["fixed_pct"] <= 100)
+                    or (set(spec) == {"haircut_pct", "floor_pct"} and _num(spec["haircut_pct"]) and _num(spec["floor_pct"])))
+                if not good:
+                    errors.append(f"scorecard.lgd_by_product.{prod} needs fixed_pct, or haircut_pct and floor_pct")
+                if prod not in products:
+                    errors.append(f"scorecard.lgd_by_product lists unknown product '{prod}'")
+            for prod in products:
+                if prod not in lgd:
+                    warnings.append(f"scorecard: no LGD setting for product '{prod}' (it cannot be scored)")
+
+    flags = (card.get("fraud") or {}).get("flags", [])
+    if not isinstance(flags, list) or not all(isinstance(x, dict) and isinstance(x.get("field"), str)
+                                              and _num(x.get("points")) for x in flags):
+        errors.append("scorecard.fraud.flags must be a list of {field, points}")
 
 
 # ------------------------------------------------------------ whole pack
@@ -224,6 +309,10 @@ def load_client_pack(path: str | Path) -> ClientPack:
 
     _validate_rules(raw, products, derived, regulatory, errors, warnings)
 
+    card = raw.get("scorecard")
+    if card is not None:
+        _validate_scorecard(card, products, errors, warnings)
+
     needed = {r["reason_code"] for r in raw["credit_policy"] if isinstance(r, dict) and "reason_code" in r}
     needed |= {failure.get("data_missing_reason_code", "DATA_MISSING"), "SCORING_UNAVAILABLE"}
     lacking = sorted(c for c in needed if isinstance(c, str) and c not in texts)
@@ -244,4 +333,5 @@ def load_client_pack(path: str | Path) -> ClientPack:
         regulatory_parameters=regulatory,
         warnings=tuple(warnings),
         reason_texts=dict(texts),
+        scorecard=dict(card) if isinstance(card, dict) else {},
     )
